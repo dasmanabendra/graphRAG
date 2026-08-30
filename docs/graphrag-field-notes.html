@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GraphRAG Field Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- tokens ---------- */
+:root{
+  --bg:#ece7da;
+  --surface:#f7f4eb;
+  --surface-2:#efe9d8;
+  --ink:#262420;
+  --ink-muted:#5c574c;
+  --ink-faint:#8a8474;
+  --border:#d9d2bf;
+  --accent:#2b5d6b;
+  --accent-ink:#1c4049;
+  --accent-soft:#dce7e6;
+  --accent-2:#a8791f;
+  --accent-2-soft:#f0e4c8;
+  --good:#3f7d4a;
+  --good-soft:#e2ecdf;
+  --warn:#9c3b26;
+  --warn-soft:#f2ded6;
+  --code-bg:#e6e0cb;
+  --shadow: 0 1px 2px rgba(38,36,32,0.06), 0 4px 16px rgba(38,36,32,0.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14181b;
+    --surface:#1b2126;
+    --surface-2:#20272d;
+    --ink:#e8e4d8;
+    --ink-muted:#a7a192;
+    --ink-faint:#716b5c;
+    --border:#2c333a;
+    --accent:#79b2c1;
+    --accent-ink:#bfe0e8;
+    --accent-soft:#1e2e33;
+    --accent-2:#d2a44e;
+    --accent-2-soft:#332a16;
+    --good:#7fc98c;
+    --good-soft:#1d2a1f;
+    --warn:#e0937a;
+    --warn-soft:#33201a;
+    --code-bg:#232a24;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14181b;
+  --surface:#1b2126;
+  --surface-2:#20272d;
+  --ink:#e8e4d8;
+  --ink-muted:#a7a192;
+  --ink-faint:#716b5c;
+  --border:#2c333a;
+  --accent:#79b2c1;
+  --accent-ink:#bfe0e8;
+  --accent-soft:#1e2e33;
+  --accent-2:#d2a44e;
+  --accent-2-soft:#332a16;
+  --good:#7fc98c;
+  --good-soft:#1d2a1f;
+  --warn:#e0937a;
+  --warn-soft:#33201a;
+  --code-bg:#232a24;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+}
+
+/* ---------- base ---------- */
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size:16px;
+  line-height:1.6;
+}
+
+a{ color:var(--accent-ink); }
+a:focus-visible, button:focus-visible, summary:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+
+h1,h2,h3,h4{
+  font-family:"Fraunces", Georgia, serif;
+  font-weight:600;
+  color:var(--ink);
+  text-wrap:balance;
+  line-height:1.15;
+  margin:0;
+}
+
+code, .mono{
+  font-family:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  font-size:0.88em;
+}
+code{
+  background:var(--code-bg);
+  padding:0.12em 0.4em;
+  border-radius:4px;
+  color:var(--ink);
+}
+
+/* ---------- shell ---------- */
+.page{ max-width:1180px; margin:0 auto; padding:0 24px 96px; }
+
+.masthead{
+  padding:56px 4px 40px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:32px;
+}
+.eyebrow{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.78rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 14px;
+}
+.masthead h1{
+  font-size:clamp(2.2rem, 5vw, 3.4rem);
+  font-optical-sizing:auto;
+}
+.dek{
+  max-width:56ch;
+  color:var(--ink-muted);
+  font-size:1.1rem;
+  margin:16px 0 0;
+}
+.colophon{
+  margin-top:22px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 22px;
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.78rem;
+  color:var(--ink-faint);
+}
+.colophon strong{ color:var(--ink-muted); font-weight:500; }
+
+.layout{
+  display:grid;
+  grid-template-columns:240px minmax(0,1fr);
+  gap:48px;
+  align-items:start;
+}
+@media (max-width:900px){
+  .layout{ grid-template-columns:1fr; }
+}
+
+/* ---------- TOC ---------- */
+.toc-desktop{
+  position:sticky;
+  top:24px;
+  align-self:start;
+}
+.toc-desktop ol{
+  list-style:none;
+  margin:0;
+  padding:0;
+  border-left:1px solid var(--border);
+}
+.toc-desktop li{ margin:0; }
+.toc-desktop a{
+  display:block;
+  padding:6px 0 6px 16px;
+  margin-left:-1px;
+  border-left:2px solid transparent;
+  color:var(--ink-muted);
+  text-decoration:none;
+  font-size:0.92rem;
+}
+.toc-desktop a:hover{ color:var(--ink); border-left-color:var(--border); }
+.toc-desktop .num{
+  font-family:"IBM Plex Mono", monospace;
+  color:var(--ink-faint);
+  margin-right:8px;
+  font-size:0.82em;
+}
+.toc-mobile{ display:none; }
+@media (max-width:900px){
+  .toc-desktop{ display:none; }
+  .toc-mobile{
+    display:block;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    margin-bottom:8px;
+    box-shadow:var(--shadow);
+  }
+  .toc-mobile summary{
+    cursor:pointer;
+    padding:14px 18px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.85rem;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  .toc-mobile ol{
+    list-style:none;
+    margin:0;
+    padding:0 18px 16px;
+  }
+  .toc-mobile a{
+    display:block;
+    padding:5px 0;
+    color:var(--ink-muted);
+    text-decoration:none;
+    font-size:0.94rem;
+  }
+  .toc-mobile .num{ font-family:"IBM Plex Mono", monospace; color:var(--ink-faint); margin-right:8px; font-size:0.85em; }
+}
+
+/* ---------- content ---------- */
+.content{ min-width:0; }
+
+section.chapter{
+  padding-top:8px;
+  margin-bottom:64px;
+  scroll-margin-top:20px;
+}
+section.chapter + section.chapter{
+  border-top:1px solid var(--border);
+  padding-top:56px;
+}
+
+.chapter-head{ margin-bottom:24px; }
+.chapter-num{
+  font-family:"IBM Plex Mono", monospace;
+  color:var(--accent);
+  font-size:0.85rem;
+  letter-spacing:0.06em;
+  display:block;
+  margin-bottom:6px;
+}
+.chapter-head h2{ font-size:clamp(1.5rem, 3vw, 2rem); }
+.chapter-dek{ color:var(--ink-muted); max-width:66ch; margin:10px 0 0; }
+
+.prose{ max-width:68ch; }
+.prose p{ margin:0 0 16px; }
+.prose p:last-child{ margin-bottom:0; }
+
+h3.sub{
+  font-family:"Fraunces", serif;
+  font-size:1.2rem;
+  font-weight:600;
+  margin:32px 0 10px;
+}
+h3.sub .sub-num{ color:var(--accent); font-family:"IBM Plex Mono", monospace; font-size:0.75em; margin-right:8px; }
+h3.sub:first-child{ margin-top:0; }
+
+.lede{
+  font-family:"Fraunces", serif;
+  font-style:italic;
+  font-size:1.3rem;
+  line-height:1.5;
+  color:var(--ink);
+  max-width:60ch;
+  margin:0 0 16px;
+}
+
+/* ---------- tables ---------- */
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  box-shadow:var(--shadow);
+  margin:18px 0 28px;
+}
+table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:520px;
+  font-size:0.94rem;
+}
+table caption{
+  text-align:left;
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.76rem;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  padding:12px 16px 0;
+}
+th, td{
+  padding:10px 16px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+thead th{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.76rem;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  color:var(--ink-muted);
+  background:var(--surface-2);
+  white-space:nowrap;
+}
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--surface-2); }
+td.num, th.num{ font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono", monospace; white-space:nowrap; }
+.group-row td{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.76rem;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  color:var(--accent);
+  background:var(--accent-soft);
+  border-bottom:1px solid var(--border);
+}
+.pill{
+  display:inline-block;
+  padding:2px 9px;
+  border-radius:99px;
+  font-size:0.78rem;
+  font-family:"IBM Plex Mono", monospace;
+}
+.pill-good{ background:var(--good-soft); color:var(--good); }
+.pill-cost{ background:var(--surface-2); color:var(--ink-muted); border:1px solid var(--border); }
+.winner{ font-weight:600; color:var(--good); }
+
+/* ---------- callouts ---------- */
+.callout{
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
+  background:var(--surface);
+  border-radius:8px;
+  padding:18px 20px;
+  margin:22px 0;
+  box-shadow:var(--shadow);
+}
+.callout.bug{ border-left-color:var(--warn); }
+.callout.win{ border-left-color:var(--good); }
+.callout.gold{ border-left-color:var(--accent-2); }
+.callout h4{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.78rem;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  margin:0 0 10px;
+}
+.callout.bug h4{ color:var(--warn); }
+.callout.win h4{ color:var(--good); }
+.callout.gold h4{ color:var(--accent-2); }
+.callout p{ margin:0 0 10px; color:var(--ink); }
+.callout p:last-child{ margin-bottom:0; }
+
+/* step chain */
+.chain{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:stretch;
+  gap:0;
+  margin:20px 0 28px;
+}
+.chain-step{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px 14px;
+  min-width:150px;
+  flex:1 1 150px;
+  box-shadow:var(--shadow);
+}
+.chain-step .k{ font-family:"IBM Plex Mono", monospace; font-size:0.72rem; color:var(--accent); letter-spacing:0.04em; text-transform:uppercase; }
+.chain-step .v{ font-size:0.92rem; margin-top:4px; }
+.chain-arrow{
+  display:flex; align-items:center; justify-content:center;
+  padding:0 8px; color:var(--ink-faint); font-size:1.1rem;
+}
+
+/* glossary */
+.glossary{
+  columns:2 280px;
+  column-gap:32px;
+}
+.gterm{ break-inside:avoid; margin:0 0 20px; }
+.gterm dt{
+  font-family:"IBM Plex Mono", monospace;
+  font-weight:600;
+  color:var(--accent-ink);
+  margin-bottom:3px;
+}
+.gterm dd{ margin:0; color:var(--ink-muted); }
+
+/* scoreboard */
+.scoreboard{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  margin:20px 0 28px;
+}
+.score-card{
+  flex:1 1 160px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:16px 18px;
+  box-shadow:var(--shadow);
+}
+.score-card .label{ font-family:"IBM Plex Mono", monospace; font-size:0.74rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); }
+.score-card .em{ font-family:"Fraunces", serif; font-size:2rem; font-weight:600; margin-top:4px; }
+.score-card.leader{ border-color:var(--good); }
+.score-card.leader .em{ color:var(--good); }
+
+footer.page-foot{
+  margin-top:64px;
+  padding-top:24px;
+  border-top:1px solid var(--border);
+  color:var(--ink-faint);
+  font-size:0.85rem;
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Personal reference · learned by building it, not by reading about it</p>
+    <h1>GraphRAG Field Notes</h1>
+    <p class="dek">What a from-scratch GraphRAG, Vector RAG, and Hybrid RAG pipeline actually taught me — the fundamentals, the bugs I found in my own code, and the numbers that settled the arguments.</p>
+    <div class="colophon">
+      <span><strong>Corpus</strong> 249 Wikipedia paragraphs (HotpotQA)</span>
+      <span><strong>Eval set</strong> 25 questions</span>
+      <span><strong>Models</strong> gemini-3.1-flash-lite · gemini-embedding-001</span>
+      <span><strong>Pipelines</strong> Vector · Graph · Hybrid (RRF)</span>
+    </div>
+  </header>
+
+  <details class="toc-mobile">
+    <summary>Contents</summary>
+    <ol>
+      <li><a href="#s0"><span class="num">0</span>Quick reference</a></li>
+      <li><a href="#s1"><span class="num">1</span>GraphRAG fundamentals</a></li>
+      <li><a href="#s2"><span class="num">2</span>How this project implemented it</a></li>
+      <li><a href="#s3"><span class="num">3</span>Bugs found, with real examples</a></li>
+      <li><a href="#s4"><span class="num">4</span>Metrics: how "better" was measured</a></li>
+      <li><a href="#s5"><span class="num">5</span>Head-to-head results</a></li>
+      <li><a href="#s6"><span class="num">6</span>Hybrid retrieval in action</a></li>
+      <li><a href="#s7"><span class="num">7</span>Toy vs. production-grade</a></li>
+      <li><a href="#s8"><span class="num">8</span>Glossary</a></li>
+      <li><a href="#s9"><span class="num">9</span>Appendix: file map</a></li>
+    </ol>
+  </details>
+
+  <div class="layout">
+    <nav class="toc-desktop" aria-label="Table of contents">
+      <ol>
+        <li><a href="#s0"><span class="num">0</span>Quick reference</a></li>
+        <li><a href="#s1"><span class="num">1</span>GraphRAG fundamentals</a></li>
+        <li><a href="#s2"><span class="num">2</span>This project's implementation</a></li>
+        <li><a href="#s3"><span class="num">3</span>Bugs found</a></li>
+        <li><a href="#s4"><span class="num">4</span>Metrics</a></li>
+        <li><a href="#s5"><span class="num">5</span>Head-to-head results</a></li>
+        <li><a href="#s6"><span class="num">6</span>Hybrid in action</a></li>
+        <li><a href="#s7"><span class="num">7</span>Toy vs. production</a></li>
+        <li><a href="#s8"><span class="num">8</span>Glossary</a></li>
+        <li><a href="#s9"><span class="num">9</span>File map</a></li>
+      </ol>
+    </nav>
+
+    <main class="content">
+
+      <!-- ============ SECTION 0 ============ -->
+      <section class="chapter" id="s0">
+        <div class="chapter-head">
+          <span class="chapter-num">00 / Quick reference</span>
+          <h2>Everything below, in four tables</h2>
+          <p class="chapter-dek">Read this section and stop, unless you need the reasoning behind it. Everything past this point exists to justify these tables.</p>
+        </div>
+
+        <div class="scoreboard">
+          <div class="score-card"><div class="label">Vector RAG · EM</div><div class="em">0.56</div></div>
+          <div class="score-card"><div class="label">GraphRAG · EM</div><div class="em">0.48</div></div>
+          <div class="score-card leader"><div class="label">Hybrid RAG · EM</div><div class="em">0.60</div></div>
+        </div>
+        <p class="prose" style="margin-bottom:28px; color:var(--ink-muted); max-width:66ch;">Hybrid won not by being a cleverer retriever, but by <em>arithmetically outvoting</em> GraphRAG's noise: fusing in the vector list's clean top-5 pushed the graph pipeline's hub-node contamination (§3) out of the final context often enough to close its recall gap without losing GraphRAG's multi-hop reach.</p>
+
+        <h3 class="sub"><span class="sub-num">A</span>Preprocessing — building the index, once</h3>
+        <div class="table-wrap">
+          <table>
+            <caption>one row per indexing step · cost is what a full rebuild spends</caption>
+            <thead><tr><th>Step</th><th>What it does</th><th>Cost</th></tr></thead>
+            <tbody>
+              <tr class="group-row"><td colspan="3">GraphRAG — 5 steps</td></tr>
+              <tr><td>Extraction</td><td>LLM reads each chunk batch, pulls out entities + relations as structured JSON</td><td class="num"><span class="pill pill-cost">~36 LLM calls</span></td></tr>
+              <tr><td>Entity resolution</td><td>Merges surface forms that name the same real-world thing (exact + fuzzy string match)</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Graph construction</td><td>Builds the node/edge graph from resolved entities and relations</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Community detection</td><td>Louvain clustering finds densely-connected subgroups of nodes</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Community summarization</td><td>LLM summarizes clusters of 3+ nodes; smaller clusters get a template stub</td><td class="num"><span class="pill pill-cost">79 LLM calls</span> + 492 free stubs</td></tr>
+              <tr class="group-row"><td colspan="3">Vector RAG — 1 step</td></tr>
+              <tr><td>Embed &amp; index</td><td>Embeds every chunk, upserts into a Chroma collection</td><td class="num"><span class="pill pill-cost">~16 embed calls</span></td></tr>
+              <tr class="group-row"><td colspan="3">Hybrid RAG — 0 steps</td></tr>
+              <tr><td colspan="2"><em>Reuses the GraphRAG and Vector RAG indexes unchanged — nothing to build</em></td><td class="num"><span class="pill pill-good">free</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">B</span>Inference — answering one question</h3>
+        <div class="table-wrap">
+          <table>
+            <caption>one row per query-time step · cost is per question</caption>
+            <thead><tr><th>Step</th><th>What it does</th><th>Cost</th></tr></thead>
+            <tbody>
+              <tr class="group-row"><td colspan="3">GraphRAG — 4 steps</td></tr>
+              <tr><td>Entity matching</td><td>Finds entities named in the question (substring, then fuzzy fallback)</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Neighbor expansion</td><td>Walks 1-hop neighbors of matched entities, ranked by edge weight, capped at 20</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Context gathering</td><td>Collects each focus entity's <code>chunk_ids</code> backreference</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Generate answer</td><td>LLM answers from graph context + community summaries, reasoning before answer</td><td class="num"><span class="pill pill-cost">1 chat call</span></td></tr>
+              <tr class="group-row"><td colspan="3">Vector RAG — 3 steps</td></tr>
+              <tr><td>Embed question</td><td>Embeds the question text</td><td class="num"><span class="pill pill-cost">1 embed call</span></td></tr>
+              <tr><td>Similarity search</td><td>Top-5 nearest chunks by distance in Chroma</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Generate answer</td><td>LLM answers from the 5 retrieved passages</td><td class="num"><span class="pill pill-cost">1 chat call</span></td></tr>
+              <tr class="group-row"><td colspan="3">Hybrid RAG — 4 steps</td></tr>
+              <tr><td>Vector retrieval</td><td>Same as Vector RAG's embed + search</td><td class="num"><span class="pill pill-cost">1 embed call</span></td></tr>
+              <tr><td>Graph retrieval</td><td>Same as GraphRAG's match + expand + gather</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Fuse (RRF)</td><td>Merges both ranked lists by <code>1/(60+rank)</code>, keeps top 6</td><td class="num"><span class="pill pill-good">free</span></td></tr>
+              <tr><td>Generate answer</td><td>LLM answers from the fused passages + community summary</td><td class="num"><span class="pill pill-cost">1 chat call</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">C</span>Concept cheat-sheet</h3>
+        <div class="table-wrap">
+          <table>
+            <caption>the vocabulary section 1 leans on — full definitions in the glossary (§8)</caption>
+            <thead><tr><th>Term</th><th>In one line</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">entity</td><td>A node in the graph — a person, place, org, or work pulled out of the text</td></tr>
+              <tr><td class="mono">relation / edge</td><td>A connection between two entities, weighted by how often they co-occur</td></tr>
+              <tr><td class="mono">node degree</td><td>How many edges touch a node — a rough proxy for "how central"</td></tr>
+              <tr><td class="mono">community</td><td>A densely-connected cluster of nodes, found by graph clustering</td></tr>
+              <tr><td class="mono">chunk_id</td><td>The source passage a fact came from</td></tr>
+              <tr><td class="mono">local search</td><td>Retrieval that starts from named entities and expands outward</td></tr>
+              <tr><td class="mono">global search</td><td>Retrieval that starts from community summaries, for broad questions</td></tr>
+              <tr><td class="mono">hub node</td><td>An entity mentioned across so many unrelated chunks it leaks noise</td></tr>
+              <tr><td class="mono">bridge node</td><td>An entity that connects two otherwise-separate matched entities</td></tr>
+              <tr><td class="mono">RRF</td><td>Reciprocal Rank Fusion — merges ranked lists by <code>1/(k+rank)</code></td></tr>
+              <tr><td class="mono">EM</td><td>Exact Match — 1 if the normalized answer matches gold exactly, else 0</td></tr>
+              <tr><td class="mono">F1</td><td>Token-overlap score between predicted and gold answer</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">D</span>Which pipeline wins, when</h3>
+        <div class="table-wrap">
+          <table>
+            <caption>the practical payoff — distilled from §5's eval and §1's concepts</caption>
+            <thead><tr><th>Question pattern</th><th>Best pipeline</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>Single-fact lookup ("who directed X")</td><td><span class="winner">Vector RAG</span></td><td>Dense retrieval already nails it; graph traversal adds hub-node noise for no recall gain</td></tr>
+              <tr><td>Multi-hop, connecting two named entities</td><td><span class="winner">Hybrid RAG</span></td><td>Graph supplies the connecting edge vector similarity can't see; RRF suppresses the hub-node noise a pure-graph pipeline would keep</td></tr>
+              <tr><td>Broad thematic ("what are the main topics in X")</td><td><span class="winner">Neither, honestly</span></td><td>This needs global search over community summaries — a mode this project never implemented (see §7)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 1 ============ -->
+      <section class="chapter" id="s1">
+        <div class="chapter-head">
+          <span class="chapter-num">01 / Fundamentals</span>
+          <h2>GraphRAG, as a general idea</h2>
+          <p class="chapter-dek">Everything here applies to any GraphRAG system, not just this one. This project's numbers show up only as evidence for the concept, not as the subject.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">1.0</span>The mental model</h3>
+        <p class="lede">Build a map of entities and how they relate to each other. Then answer a question either by walking outward from a named landmark on that map — <strong>local search</strong> — or by reading the map's regional summaries — <strong>global search</strong>. Everything below is detail behind this one picture.</p>
+
+        <h3 class="sub"><span class="sub-num">1.1</span>The problem it solves</h3>
+        <div class="prose">
+          <p>Vector similarity search retrieves passages that sound like the question. That works when the answer lives in one passage. It breaks on questions that only resolve by <em>connecting</em> two facts that don't share vocabulary — "Were the directors of these two unrelated-sounding films born in the same country?" Neither film's Wikipedia paragraph mentions the other; nothing in the embedding space pulls them into the same neighborhood. The connection exists only in the <em>relationship</em> between two entities, not in any single chunk's wording — and that relationship is exactly what a similarity search over chunks has no way to represent.</p>
+          <p>GraphRAG's answer: extract the entities and relationships explicitly, at index time, into a structure a query can traverse — so a multi-hop question becomes a graph walk instead of a vocabulary-matching problem.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">1.2</span>The knowledge graph</h3>
+        <div class="prose">
+          <p>An <strong>entity</strong> is a node — a person, place, organization, or work. A <strong>relation</strong> is an edge between two entities, usually directed ("directed by", "located in"), carrying a <strong>weight</strong> (how many times the two entities co-occurred across the corpus) and a <strong>provenance</strong> list (which source chunks the relation was extracted from). A node's <strong>degree</strong> — how many edges touch it — is a rough proxy for how central or well-connected that entity is in the corpus. A handful of high-degree nodes ("United States", "Los Angeles" in a Wikipedia corpus) are usually unavoidable, and, as §3 covers, usually a liability.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">1.3</span>Building the graph (indexing)</h3>
+        <div class="chain">
+          <div class="chain-step"><div class="k">1</div><div class="v">Extraction — LLM reads text, pulls entities + relations</div></div>
+          <div class="chain-arrow">→</div>
+          <div class="chain-step"><div class="k">2</div><div class="v">Entity resolution — merge surface forms of the same thing</div></div>
+          <div class="chain-arrow">→</div>
+          <div class="chain-step"><div class="k">3</div><div class="v">Graph construction</div></div>
+          <div class="chain-arrow">→</div>
+          <div class="chain-step"><div class="k">4</div><div class="v">Community detection — cluster densely-connected nodes</div></div>
+          <div class="chain-arrow">→</div>
+          <div class="chain-step"><div class="k">5</div><div class="v">Community summarization — compress each cluster</div></div>
+        </div>
+        <div class="prose">
+          <p><strong>Extraction</strong> is a structured-output LLM call per batch of source text: "list the entities and relations mentioned here." <strong>Entity resolution</strong> is the general coreference/entity-linking problem — "Scott Derrickson" and "Derrickson" need to collapse into one node, but that requires either exact matching (cheap, misses paraphrase) or fuzzy/embedding matching (catches more, risks false merges). <strong>Community detection</strong> is standard graph clustering — Louvain and similar algorithms greedily group nodes to maximize <em>modularity</em>, the fraction of edges that fall inside clusters versus what you'd expect by chance. <strong>Community summarization</strong> then compresses each cluster into a paragraph an LLM can answer questions from without re-reading every source chunk in it — this is the piece that makes global search (1.4) possible at all.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">1.4</span>Querying the graph (retrieval)</h3>
+        <div class="prose">
+          <p>A question first has to be <strong>linked</strong> to the graph — which nodes does it name? From there, two general strategies diverge:</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Mode</th><th>Starts from</th><th>Good for</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Local search</strong></td><td>Named entities in the question, expanded 1+ hops</td><td>Specific, connectable facts ("is X related to Y")</td></tr>
+              <tr><td><strong>Global search</strong></td><td>Community summaries across the whole graph</td><td>Broad, thematic questions with no single entity anchor</td></tr>
+              <tr><td><strong>Hybrid local+global</strong></td><td>Both, merged (the "DRIFT search" idea)</td><td>Questions that need both a specific anchor and broader context</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose"><p>Note the terminology carefully here: this "hybrid" means combining GraphRAG's own two internal search modes. It is <em>not</em> the same "hybrid" as 1.5 below — a genuinely easy pair of concepts to conflate because both are called "hybrid," and this project only ever built the local-search half of this table (see §7).</p></div>
+
+        <h3 class="sub"><span class="sub-num">1.5</span>Vector+graph fusion — a different "hybrid"</h3>
+        <div class="prose">
+          <p>Separately from anything internal to GraphRAG, a graph retriever and a dense vector retriever have <em>complementary</em> failure modes: vector search is strong on single-passage lookups and weak on multi-hop connections; graph traversal is the reverse. Running both independently and merging their ranked results is a general RAG pattern, not a GraphRAG-specific one.</p>
+          <p>The merge technique used here — <strong>Reciprocal Rank Fusion (RRF)</strong> — predates GraphRAG entirely; it's a standard technique from search/IR for combining ranked lists without a trained reranker. Each retriever ranks the same candidate item; every item gets a score of <code>1/(k+rank)</code> per list it appears in (with a constant <code>k</code>, typically 60, that discounts how much any single rank position matters), summed across lists. An item both retrievers agree on outranks one only a single retriever found — pure arithmetic, no extra model call. Section 6 walks through this on a real question.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 2 ============ -->
+      <section class="chapter" id="s2">
+        <div class="chapter-head">
+          <span class="chapter-num">02 / Implementation</span>
+          <h2>How this project actually built it</h2>
+          <p class="chapter-dek">Numbers and outcomes, condensed — each line maps straight back to a concept in §1.3/1.4.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">2.1</span>GraphRAG here</h3>
+        <div class="prose">
+          <p>Extraction and summarization run on <code>gemini-3.1-flash-lite</code>. The 249-chunk corpus resolved to <strong>1,128 entities</strong> and <strong>583 edges</strong> (610 total relation mentions, i.e. some edges were reinforced by more than one co-occurrence). Louvain clustering at the default resolution produced <strong>571 communities</strong> — only <strong>79</strong> of them met the size-3 threshold for an LLM summary; the other <strong>492</strong> got a one-line template stub instead of real summarization. Local search expansion is capped at 20 neighbors and entity matching accepts fuzzy matches above an 0.8 similarity threshold.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">2.2</span>Vector RAG here</h3>
+        <div class="prose">
+          <p><code>gemini-embedding-001</code> at 768 dimensions, all 249 chunks embedded and upserted into a Chroma collection. Query time retrieves the top 5 nearest chunks by distance — no reranking, no metadata filtering.</p>
+        </div>
+
+        <h3 class="sub"><span class="sub-num">2.3</span>Hybrid here</h3>
+        <div class="prose">
+          <p>Reuses both indexes completely unchanged — no new preprocessing step exists for hybrid at all. At query time it runs vector retrieval and graph retrieval independently, fuses with RRF (<code>k=60</code>, the standard default from the original RRF paper, not tuned for this corpus), and keeps the top 6 fused results (<code>HYBRID_TOP_K=6</code>) — also picked, not validated against this corpus size.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 3 ============ -->
+      <section class="chapter" id="s3">
+        <div class="chapter-head">
+          <span class="chapter-num">03 / Bugs</span>
+          <h2>Bugs found, with real examples</h2>
+          <p class="chapter-dek">The hard-won lessons — found by interrogating this project's own output, not by reading about GraphRAG's known failure modes.</p>
+        </div>
+
+        <div class="callout bug">
+          <h4>Bridge nodes are computed and shown, but never used</h4>
+          <p>The UI computes and displays "bridge nodes" — entities sitting on a path between two matched entities — on every query. They never feed into retrieval; they're pure observability. Worse, they're structurally silent on the majority of real questions: bridge detection only fires when a question matches <em>two or more</em> entities, and most single-entity-anchored questions in this eval set matched exactly one.</p>
+        </div>
+
+        <div class="callout bug">
+          <h4>Hub-node contamination</h4>
+          <p>Retrieval reads an entity's raw <code>chunk_ids</code> set — every chunk that entity was ever extracted from, corpus-wide, built once at indexing time — instead of walking the graph edges actually near the matched entities. High-degree "hub" entities make this expensive:</p>
+          <p><strong>"Are Local H and For Against both from the United States?"</strong> — matching <code>United States</code> pulls in <code class="mono">Brown State Fishing Lake</code>, a Kansas lake with zero topical connection to either band, purely because both happen to share the "United States" node.</p>
+          <p><strong>"Were Scott Derrickson and Ed Wood of the same nationality?"</strong> — matching <code>Los Angeles</code> pulls in <code class="mono">David Beckham Academy</code> and <code class="mono">Guns N' Roses discography</code> — real LA-adjacent things, entirely irrelevant to a nationality question.</p>
+          <p>Both questions still got the right answer despite the noise (§4 covers why that's not the same as the retrieval being correct) — but the leaked chunks were doing nothing useful, and on a harder question they would have crowded out something that mattered.</p>
+        </div>
+
+        <div class="callout bug">
+          <h4>Community fragmentation</h4>
+          <p>571 communities over 1,128 nodes averages out to roughly two nodes per community. Only 79 (14%) cross the size-3 threshold to get a real LLM summary; the remaining 492 (86%) get <code>"Small cluster: X, Y."</code> — a template stub with no synthesized meaning. On a corpus this small, single-level Louvain fragments too aggressively for community summaries to carry the weight global search (1.4) needs them to.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 4 ============ -->
+      <section class="chapter" id="s4">
+        <div class="chapter-head">
+          <span class="chapter-num">04 / Metrics</span>
+          <h2>How "better" was measured</h2>
+          <p class="chapter-dek">Standard IR/QA evaluation, applied the same way to all three pipelines.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Formula</th><th>What it tells you</th></tr></thead>
+            <tbody>
+              <tr><td><strong>EM</strong></td><td class="mono">1 if normalize(pred) == normalize(gold) else 0</td><td>Got the exact answer, after lowercasing / stripping punctuation &amp; articles</td></tr>
+              <tr><td><strong>F1</strong></td><td class="mono">harmonic_mean(token_precision, token_recall)</td><td>Partial credit for overlapping words when the phrasing differs but the content is close</td></tr>
+              <tr><td><strong>Retrieval precision</strong></td><td class="mono">|retrieved ∩ gold_titles| / |retrieved|</td><td>How much of what was fetched was actually relevant</td></tr>
+              <tr><td><strong>Retrieval recall</strong></td><td class="mono">|retrieved ∩ gold_titles| / |gold_titles|</td><td>Whether every source needed for the answer was fetched at all</td></tr>
+              <tr><td><strong>Latency</strong></td><td class="mono">wall-clock seconds, end to end</td><td>What the user actually waits for</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <h4>EM and retrieval recall can diverge</h4>
+          <p>On "Are Local H and For Against both from the United States?", GraphRAG's retrieval precision was a mediocre 0.29 — the hub-node contamination from §3 was actively polluting the context — yet EM was still 1: the correct chunks were <em>also</em> present, so the noise didn't change the final answer. A clean EM score on a question like this hides a fragile pipeline; precision is the metric that would have caught it, EM would not.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 5 ============ -->
+      <section class="chapter" id="s5">
+        <div class="chapter-head">
+          <span class="chapter-num">05 / Results</span>
+          <h2>Head-to-head, 25 questions</h2>
+          <p class="chapter-dek">Aggregate scores across the full eval set, computed from <code>data/eval_results.json</code>.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Pipeline</th><th class="num">EM</th><th class="num">F1</th><th class="num">Ret. precision</th><th class="num">Ret. recall</th><th class="num">Latency (mean)</th></tr></thead>
+            <tbody>
+              <tr><td>Vector RAG</td><td class="num">0.56</td><td class="num">0.72</td><td class="num">0.40</td><td class="num">1.00</td><td class="num">1.39 s</td></tr>
+              <tr><td>GraphRAG</td><td class="num">0.48</td><td class="num">0.59</td><td class="num">0.25</td><td class="num">0.78</td><td class="num">3.24 s</td></tr>
+              <tr><td>Hybrid RAG</td><td class="num winner">0.60</td><td class="num winner">0.73</td><td class="num">0.34</td><td class="num">1.00</td><td class="num">2.11 s</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose">
+          <p>Reading it: Vector RAG's retrieval recall is a perfect 1.00 because top-5 similarity search on a 249-chunk corpus almost always surfaces the right passage somewhere in the five — the corpus is small enough that recall was never really the bottleneck for vector search. GraphRAG's recall drop to 0.78 is the fragmentation problem (§3) showing up numerically: when neighbor expansion misses a relation entirely, nothing else compensates. Hybrid recovers full recall by having vector's clean list to fall back on, while its precision (0.34) still beats plain GraphRAG (0.25) because RRF fusion filters out a share of the graph pipeline's hub-node noise before it reaches the LLM.</p>
+          <p>Latency is a mean, not a median — both GraphRAG and Hybrid include a handful of rate-limited retries (one question took GraphRAG 40 seconds) that pull their averages up; most individual questions resolved in well under two seconds. This run logged 18 chat calls for Vector RAG, 18 for GraphRAG, and 19 for Hybrid RAG.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 6 ============ -->
+      <section class="chapter" id="s6">
+        <div class="chapter-head">
+          <span class="chapter-num">06 / Worked example</span>
+          <h2>Hybrid retrieval, arithmetic only</h2>
+          <p class="chapter-dek">Ties back to §1.5 — the same RRF formula, on the actual Q1 output.</p>
+        </div>
+        <div class="prose">
+          <p><strong>Question:</strong> "Were Scott Derrickson and Ed Wood of the same nationality?" Vector search's top 5, by rank: <code class="mono">Ed Wood(1)</code>, <code class="mono">Scott Derrickson(2)</code>, <code class="mono">Ed Wood (film)(3)</code>, <code class="mono">Adam Collis(4)</code>, <code class="mono">Sinister (film)(5)</code>. Graph retrieval separately returned 12 chunks, ranked by how many focus entities point to each one — <code class="mono">Scott Derrickson</code> came out on top of that list because more of the matched/neighbor entities referenced it, ahead of several hub-leaked chunks pulled in via the "Los Angeles" node (§3).</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><code>score = 1/(60+rank_vector) + 1/(60+rank_graph)</code></caption>
+            <thead><tr><th>Chunk</th><th class="num">Vector rank</th><th class="num">Graph rank</th><th class="num">RRF score</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Scott Derrickson</strong></td><td class="num">2</td><td class="num">1</td><td class="num winner">0.0325</td></tr>
+              <tr><td>Ed Wood</td><td class="num">1</td><td class="num">—</td><td class="num">0.0164</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout win">
+          <h4>The payoff</h4>
+          <p><code class="mono">Scott Derrickson</code> outranks <code class="mono">Ed Wood</code> in the fused result despite Ed Wood being vector search's #1 pick — because Scott Derrickson showed up on <em>both</em> lists. No reranker model was involved; <code>0.0161 + 0.0164</code> beat <code>0.0164 + 0</code>. Meanwhile, of the seven noise chunks graph retrieval alone returned — including the Los-Angeles-leaked <code class="mono">David Beckham Academy</code> and <code class="mono">Guns N' Roses discography</code> — none scored high enough on either list to survive fusion into the top 6. Arithmetic did what a filter would otherwise have to do by hand.</p>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 7 ============ -->
+      <section class="chapter" id="s7">
+        <div class="chapter-head">
+          <span class="chapter-num">07 / Toy vs. production</span>
+          <h2>What a real deployment would change</h2>
+          <p class="chapter-dek">Every row here is a corner this project deliberately cut to stay buildable in a few sessions.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Concern</th><th>This project (toy)</th><th>Production-grade</th></tr></thead>
+            <tbody>
+              <tr><td>Extraction</td><td>Single-pass per batch, no re-check</td><td>Multi-pass "gleaning" — re-prompt to catch entities missed on the first pass</td></tr>
+              <tr><td>Entity resolution</td><td>Exact + fuzzy string match (0.8 threshold)</td><td>Embedding similarity + external KB linking (e.g. Wikidata), catching lexically-different but semantically-same names</td></tr>
+              <tr><td>Storage</td><td>networkx graph, pickled to disk</td><td>A dedicated graph database with incremental updates — no full rebuild per new document</td></tr>
+              <tr><td>Communities</td><td>Single-level Louvain, one resolution</td><td>Hierarchical clustering (e.g. Leiden) at multiple zoom levels — the prerequisite for real global search</td></tr>
+              <tr><td>Retrieval reach</td><td>Static 1-hop expansion, capped at 20, ranked by raw edge weight</td><td>Weighted multi-hop traversal with degree-based dampening, so hub nodes stop dominating</td></tr>
+              <tr><td>Retrieval correctness</td><td>Reads an entity's entire corpus-wide <code>chunk_ids</code> backreference (§3's bug)</td><td>Chunk provenance scoped to the traversal path actually walked, not the entity's global history</td></tr>
+              <tr><td>Infrastructure</td><td>One-shot script, JSON files, single API key, a call-budget counter</td><td>Incremental indexing, per-stage tracing, multi-provider fallback, rate-limit-aware scheduling</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 8 ============ -->
+      <section class="chapter" id="s8">
+        <div class="chapter-head">
+          <span class="chapter-num">08 / Glossary</span>
+          <h2>Terms, in full</h2>
+        </div>
+        <dl class="glossary">
+          <div class="gterm"><dt>entity</dt><dd>A distinct real-world thing — person, place, organization, or work — represented as a graph node.</dd></div>
+          <div class="gterm"><dt>relation / edge</dt><dd>A connection between two entities, extracted from text mentioning both; carries a weight (mention count) and provenance (source chunks).</dd></div>
+          <div class="gterm"><dt>node degree</dt><dd>The number of edges touching a node — a rough proxy for centrality.</dd></div>
+          <div class="gterm"><dt>community</dt><dd>A densely-connected subgroup of nodes found by clustering (Louvain here), maximizing modularity.</dd></div>
+          <div class="gterm"><dt>chunk_id</dt><dd>The identifier of the source passage a piece of information came from.</dd></div>
+          <div class="gterm"><dt>focus entities</dt><dd>The set of matched entities plus their expanded neighbors, whose chunks get pulled into context.</dd></div>
+          <div class="gterm"><dt>matched vs. neighbor entities</dt><dd>Matched = named directly in the question. Neighbor = one graph-hop away from a matched entity.</dd></div>
+          <div class="gterm"><dt>bridge node</dt><dd>An entity on a path connecting two otherwise-separate matched entities — computed, never used in retrieval here.</dd></div>
+          <div class="gterm"><dt>hub node</dt><dd>An entity with an unusually large <code>chunk_ids</code> backreference because it's mentioned across many unrelated documents — a common noise source.</dd></div>
+          <div class="gterm"><dt>RRF</dt><dd>Reciprocal Rank Fusion — combines ranked lists via <code>score = Σ 1/(k+rank)</code>, no trained reranker needed.</dd></div>
+          <div class="gterm"><dt>local search</dt><dd>GraphRAG query mode starting from named entities, expanding outward.</dd></div>
+          <div class="gterm"><dt>global search</dt><dd>GraphRAG query mode starting from community summaries, for broad questions. Not implemented in this project.</dd></div>
+          <div class="gterm"><dt>EM (Exact Match)</dt><dd>1 if the normalized predicted answer exactly equals the normalized gold answer, else 0.</dd></div>
+          <div class="gterm"><dt>F1</dt><dd>Harmonic mean of token-level precision and recall between predicted and gold answers.</dd></div>
+        </dl>
+      </section>
+
+      <!-- ============ SECTION 9 ============ -->
+      <section class="chapter" id="s9">
+        <div class="chapter-head">
+          <span class="chapter-num">09 / Appendix</span>
+          <h2>Project file map</h2>
+          <p class="chapter-dek">Reference only — where each concept above actually lives in code.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Stage</th><th>File</th></tr></thead>
+            <tbody>
+              <tr><td>Config / constants</td><td class="mono">config.py</td></tr>
+              <tr><td>Corpus build</td><td class="mono">data_prep/build_corpus.py</td></tr>
+              <tr><td>Embeddings (shared)</td><td class="mono">common/embeddings.py</td></tr>
+              <tr><td>Retry / backoff</td><td class="mono">common/retry.py</td></tr>
+              <tr><td>Call budget tracking</td><td class="mono">common/call_budget.py</td></tr>
+              <tr><td>Reasoning/answer parsing</td><td class="mono">common/answer_parsing.py</td></tr>
+              <tr><td>Extraction</td><td class="mono">graph_rag/extraction.py</td></tr>
+              <tr><td>Entity resolution</td><td class="mono">graph_rag/entity_resolution.py</td></tr>
+              <tr><td>Graph construction</td><td class="mono">graph_rag/graph_build.py</td></tr>
+              <tr><td>Community detection</td><td class="mono">graph_rag/communities.py</td></tr>
+              <tr><td>Community summarization</td><td class="mono">graph_rag/summarization.py</td></tr>
+              <tr><td>Entity matching (query-time)</td><td class="mono">graph_rag/query_entities.py</td></tr>
+              <tr><td>Local search / context assembly</td><td class="mono">graph_rag/local_search.py</td></tr>
+              <tr><td>GraphRAG answer + pipeline</td><td class="mono">graph_rag/answer.py, graph_rag/pipeline.py</td></tr>
+              <tr><td>Vector index + retrieval</td><td class="mono">vector_rag/index.py, vector_rag/retrieve.py</td></tr>
+              <tr><td>Vector answer + pipeline</td><td class="mono">vector_rag/answer.py, vector_rag/pipeline.py</td></tr>
+              <tr><td>RRF fusion</td><td class="mono">hybrid_rag/fuse.py</td></tr>
+              <tr><td>Hybrid answer + pipeline</td><td class="mono">hybrid_rag/answer.py, hybrid_rag/pipeline.py</td></tr>
+              <tr><td>Eval runner</td><td class="mono">eval/run_eval.py, scripts/04_run_eval.py</td></tr>
+              <tr><td>Eval scoring (EM/F1)</td><td class="mono">eval/scoring.py</td></tr>
+              <tr><td>Eval retrieval metrics</td><td class="mono">eval/retrieval_metrics.py</td></tr>
+              <tr><td>Eval report</td><td class="mono">eval/report.py</td></tr>
+              <tr><td>Streamlit UI</td><td class="mono">app.py</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="page-foot">
+        Written to be re-read, not shared as a tutorial — every number above traces back to <code>data/eval_results.json</code> or the config it was run with.
+      </footer>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
